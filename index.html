@@ -6,6 +6,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <title>お絵かき</title>
 <style>
+:root{--lw:64px;--rw:80px}
+@media (min-width:1000px){:root{--lw:104px;--rw:150px}}
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;font-family:system-ui,-apple-system,"Hiragino Sans","Yu Gothic",sans-serif;color:#333;background:#f4f1ec;overscroll-behavior:none}
 #app{display:flex;flex-direction:column;height:100vh;height:100dvh}
@@ -15,31 +17,38 @@ button,select,input{font:inherit}
 button{padding:8px 12px;border:1px solid #bbb;background:#fafafa;border-radius:8px;cursor:pointer}
 button:active{background:#eee}
 button.on{background:#333;color:#fff;border-color:#333}
-#swatch{display:inline-block;width:18px;height:18px;border:1px solid #666;border-radius:50%;vertical-align:-4px;margin-right:4px}
 #canvasArea{flex:1;position:relative;min-height:0}
 #viewport{position:absolute;top:0;left:0;right:0;bottom:0;overflow:hidden;background:#cfd3d8;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;cursor:crosshair}
 #stage{position:absolute;left:0;top:0;transform-origin:0 0;box-shadow:0 2px 12px rgba(0,0,0,.35)}
 #stage canvas{display:block}
 #temp{position:absolute;left:0;top:0;pointer-events:none}
 .float{position:absolute;background:rgba(255,255,255,.93);border:1px solid #ccc;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.2);padding:6px}
-#left{left:6px;top:6px;width:64px;max-height:calc(100% - 12px);overflow-y:auto;display:flex;flex-direction:column;gap:6px}
-#left h3{margin:2px 0 0;font-size:11px;color:#666;text-align:center}
-#left small{font-size:10px;color:#888;text-align:center}
-#sizes{display:flex;flex-direction:column;gap:4px}
-#sizes button{padding:7px 0;width:100%}
-#alpha{width:100%;padding:7px 0}
-#zoombox{right:6px;top:6px;width:64px;display:flex;flex-direction:column;gap:6px;text-align:center}
-#zoombox button{padding:7px 0;font-size:13px}
-#palpanel{right:6px;top:182px;width:280px;max-height:calc(100% - 190px);overflow-y:auto;display:none}
-#palpanel.open{display:block}
-#palpanel h3{margin:0 0 4px;font-size:12px;color:#666}
-#palette{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;margin-bottom:10px}
+.float h3{margin:2px 0 3px;font-size:11px;color:#666;text-align:center}
+.float small{display:block;font-size:10px;color:#888;text-align:center;margin-top:2px}
+
+/* 左：ペン設定（太さ・濃さ） */
+#left{left:6px;top:6px;width:var(--lw);max-height:calc(100% - 12px);overflow-y:auto}
+#sizes,#alphas{display:grid;grid-template-columns:1fr;gap:3px}
+@media (min-width:1000px){#sizes,#alphas{grid-template-columns:1fr 1fr}}
+#sizes button,#alphas button{padding:5px 0;font-size:13px;line-height:20px;border-radius:6px}
+#alphas button{border:1px solid #888}
+#alphas button.sel{outline:3px solid #2a7fff;outline-offset:1px}
+
+/* 右上：拡大縮小 */
+#zoombox{right:6px;top:6px;width:var(--rw);display:flex;flex-direction:column;gap:6px;text-align:center}
+#zoombox button{padding:7px 0;font-size:12px}
+
+/* 右：パレット（常に表示） */
+#palpanel{right:6px;top:164px;width:var(--rw);max-height:calc(100% - 170px);overflow-y:auto}
+#palette{display:grid;grid-template-columns:repeat(2,1fr);gap:4px;margin-bottom:8px}
+@media (min-width:1000px){#palette{grid-template-columns:repeat(4,1fr)}}
 #palette button{aspect-ratio:1;padding:0;border:1px solid #888;border-radius:4px}
 #palette button.sel{outline:3px solid #333;outline-offset:1px}
-.row{display:flex;gap:6px;align-items:center}
-#code{flex:1;min-width:0;padding:6px;border:1px solid #bbb;border-radius:6px}
-#preview{width:32px;height:32px;border:1px solid #888;border-radius:6px;flex:none}
-#foot{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:#777;padding:3px 8px;background:#fff;border-top:1px solid #ddd}
+#preview{width:100%;height:22px;border:1px solid #888;border-radius:6px;margin-bottom:4px}
+#code{width:100%;padding:4px;font-size:12px;border:1px solid #bbb;border-radius:6px}
+#register{width:100%;margin-top:4px;padding:6px 0;font-size:13px}
+
+#foot{display:flex;justify-content:flex-start;font-size:11px;color:#777;padding:3px 8px;background:#fff;border-top:1px solid #ddd}
 </style>
 </head>
 <body>
@@ -50,14 +59,12 @@ button.on{background:#333;color:#fff;border-color:#333}
       <button id="redo">↪ 進む</button>
       <button id="clear">🗑 全削除</button>
       <button id="save">💾 保存</button>
-      <button id="finger" class="on">👆 指で描く：オン</button>
     </div>
     <div class="grp" id="tools">
       <button data-tool="pen" class="on">✏️ ペン</button>
       <button data-tool="eraser">🧽 消しゴム</button>
       <button data-tool="eyedrop">💧 スポイト</button>
       <button data-tool="hand">✋ 手</button>
-      <button id="colorbtn"><span id="swatch"></span>色</button>
     </div>
   </div>
 
@@ -72,9 +79,8 @@ button.on{background:#333;color:#fff;border-color:#333}
     <div id="left" class="float">
       <h3>太さ</h3>
       <div id="sizes"></div>
-      <h3>濃さ</h3>
-      <select id="alpha"></select>
-      <small>薄い←→濃い</small>
+      <h3 style="margin-top:8px">濃さ</h3>
+      <div id="alphas"></div>
     </div>
 
     <div id="zoombox" class="float">
@@ -85,20 +91,18 @@ button.on{background:#333;color:#fff;border-color:#333}
     </div>
 
     <div id="palpanel" class="float">
-      <h3>パレット(32色)</h3>
+      <h3>パレット</h3>
       <div id="palette"></div>
       <h3>カラーコード</h3>
-      <div class="row">
-        <div id="preview"></div>
-        <input id="code" value="#000000" maxlength="7" autocapitalize="off" autocomplete="off" spellcheck="false">
-      </div>
-      <button id="register" style="margin-top:6px;width:100%">選択中の枠に登録</button>
+      <div id="preview"></div>
+      <input id="code" value="#000000" maxlength="7" autocapitalize="off" autocomplete="off" spellcheck="false">
+      <button id="register">登録</button>
+      <small>選んだ枠に上書き</small>
     </div>
   </div>
 
   <div id="foot">
     <span id="status">自動バックアップ: 待機中</span>
-    <span id="ptype">入力: -</span>
   </div>
 </div>
 
@@ -107,6 +111,7 @@ button.on{background:#333;color:#fff;border-color:#333}
 const W = 840, H = 1120;                 // キャンバスの大きさ（縦長 3:4）
 const ZMIN = 0.5, ZMAX = 5.0, ZDEFAULT = 1.5;
 const SIZES = [1, 2, 3, 5, 8, 12, 20, 30];
+const ALPHAS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
 const UNDO_MAX = 12;
 const DEFAULT_PALETTE = [
   '#000000','#4d4d4d','#808080','#b3b3b3','#ffffff','#8b4513','#d2691e','#f4a460',
@@ -128,7 +133,7 @@ mctx.fillStyle = '#fff'; mctx.fillRect(0, 0, W, H);
 // ===== 状態 =====
 let tool = 'pen', color = '#000000', alpha = 1, size = 5;
 let zoom = ZDEFAULT, px = 0, py = 0;
-let sel = 0, dirty = false, fingerDraw = true;
+let sel = 0, dirty = false;
 
 // ===== 表示（拡大縮小・移動） =====
 function applyView() {
@@ -171,22 +176,6 @@ function setTool(t) {
 }
 document.querySelectorAll('#tools button[data-tool]').forEach(b => b.onclick = () => setTool(b.dataset.tool));
 
-$('finger').onclick = () => {
-  fingerDraw = !fingerDraw;
-  $('finger').classList.toggle('on', fingerDraw);
-  $('finger').textContent = '👆 指で描く：' + (fingerDraw ? 'オン' : 'オフ');
-};
-
-// 濃さ（ドロップダウン）
-const alphaSel = $('alpha');
-for (let v = 10; v <= 100; v += 10) {
-  const o = document.createElement('option');
-  o.value = v; o.textContent = v + '%';
-  alphaSel.appendChild(o);
-}
-alphaSel.value = 100;
-alphaSel.onchange = () => alpha = alphaSel.value / 100;
-
 // 太さ（ボタン）
 SIZES.forEach(s => {
   const b = document.createElement('button');
@@ -197,6 +186,20 @@ SIZES.forEach(s => {
     document.querySelectorAll('#sizes button').forEach(x => x.classList.toggle('on', x === b));
   };
   $('sizes').appendChild(b);
+});
+
+// 濃さ（ボタン：薄い色ほど薄い灰色）
+ALPHAS.forEach(v => {
+  const b = document.createElement('button');
+  b.textContent = v + '%';
+  b.style.background = `rgba(50,50,50,${(0.06 + v / 100 * 0.8).toFixed(2)})`;
+  b.style.color = v >= 50 ? '#fff' : '#333';
+  b.classList.toggle('sel', v === 100);
+  b.onclick = () => {
+    alpha = v / 100;
+    document.querySelectorAll('#alphas button').forEach(x => x.classList.toggle('sel', x === b));
+  };
+  $('alphas').appendChild(b);
 });
 
 // ===== パレット =====
@@ -214,7 +217,6 @@ function setColor(hex) {
   color = hex;
   $('code').value = hex;
   $('preview').style.background = hex;
-  $('swatch').style.background = hex;
 }
 function renderPalette() {
   const box = $('palette');
@@ -230,7 +232,7 @@ function renderPalette() {
 }
 $('code').addEventListener('input', () => {
   const h = normHex($('code').value);
-  if (h) { color = h; $('preview').style.background = h; $('swatch').style.background = h; }
+  if (h) { color = h; $('preview').style.background = h; }
 });
 $('register').onclick = () => {
   const h = normHex($('code').value);
@@ -240,8 +242,6 @@ $('register').onclick = () => {
   setColor(h);
   renderPalette();
 };
-$('colorbtn').onclick = () => $('palpanel').classList.toggle('open');
-if (window.innerWidth >= 1000) $('palpanel').classList.add('open');   // 横長なら最初から表示
 renderPalette();
 setColor(palette[0]);
 
@@ -307,13 +307,6 @@ function endStroke() {
   drawing = false; drawId = null;
   dirty = true;
 }
-function cancelStroke() {               // 描きかけをなかったことにする（2本指になったとき等）
-  if (!drawing) return;
-  tctx.clearRect(0, 0, W, H);
-  temp.style.opacity = 1;
-  drawing = false; drawId = null;
-  undoStack.pop();
-}
 function pick(p) {
   const x = Math.floor(p.x), y = Math.floor(p.y);
   if (x < 0 || y < 0 || x >= W || y >= H) return;
@@ -329,8 +322,7 @@ function beginPan(id, x, y) { panning = true; panId = id; panStart = { x, y, px,
 function movePan(x, y) { px = panStart.px + (x - panStart.x); py = panStart.py + (y - panStart.y); applyView(); }
 function endPan() { panning = false; panId = null; }
 
-// ===== 指の操作 =====
-// 指1本：描く（オン）／画面移動（オフ・手ツール）　指2本：ピンチで拡大縮小＋移動
+// ===== 指の操作（描かない）：1本=移動、2本=ピンチで拡大縮小 =====
 const touches = new Map();   // pointerId -> {x,y}
 let gesture = null;
 let penDown = false, lastPenTime = 0;
@@ -349,16 +341,8 @@ function onTouchDown(e) {
   if (penNearby()) return;              // ペンが近いときの指（手のひら）は無視
   viewport.setPointerCapture(e.pointerId);
   touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
-  if (touches.size === 1) {
-    if (fingerDraw && tool !== 'hand') {
-      const p = toCanvas(e);
-      if (tool === 'eyedrop') pick(p); else startStroke(p, e.pointerId);
-    } else {
-      beginPan(e.pointerId, e.clientX, e.clientY);
-    }
-  } else if (touches.size === 2) {
-    cancelStroke(); endPan(); startGesture();
-  }
+  if (touches.size === 1) beginPan(e.pointerId, e.clientX, e.clientY);
+  else if (touches.size === 2) { endPan(); startGesture(); }
 }
 function onTouchMove(e) {
   const t = touches.get(e.pointerId);
@@ -375,8 +359,6 @@ function onTouchMove(e) {
     const uy = (gesture.my - gesture.py) / gs;
     zoom = nz; px = mx - ux * (nz / dpr); py = my - uy * (nz / dpr);
     applyView();
-  } else if (drawing && e.pointerId === drawId) {
-    strokeMove(e);
   } else if (panning && e.pointerId === panId) {
     movePan(e.clientX, e.clientY);
   }
@@ -385,20 +367,17 @@ function onTouchEnd(e) {
   if (!touches.has(e.pointerId)) return;
   touches.delete(e.pointerId);
   gesture = null;
-  if (drawing && e.pointerId === drawId) endStroke();
   if (touches.size === 0) endPan();
   else if (touches.size === 1) { const [id, t] = [...touches.entries()][0]; beginPan(id, t.x, t.y); }
   else startGesture();
 }
 
-// ===== ポインタ入力 =====
+// ===== ポインタ入力（ペン/マウスで描く） =====
 viewport.addEventListener('pointerdown', e => {
-  $('ptype').textContent = '入力: ' + e.pointerType;     // ペンが何として認識されたか表示
   if (e.pointerType === 'touch') { onTouchDown(e); return; }
-  // ペン or マウス
   if (e.button > 0) return;
   if (e.pointerType === 'pen') { penDown = true; lastPenTime = performance.now(); }
-  cancelStroke(); touches.clear(); gesture = null; endPan();   // ペンが優先
+  touches.clear(); gesture = null; endPan();   // ペンが優先
   viewport.setPointerCapture(e.pointerId);
   if (tool === 'hand') {
     beginPan(e.pointerId, e.clientX, e.clientY);
