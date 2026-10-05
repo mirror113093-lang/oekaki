@@ -6,8 +6,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <title>お絵かき</title>
 <style>
-:root{--lw:56px;--rw:76px}
-@media (min-width:1000px){:root{--lw:104px;--rw:150px}}
+:root{--lw:64px;--rw:76px}
+@media (min-width:1000px){:root{--lw:116px;--rw:150px}}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html,body{margin:0;height:100%;font-family:system-ui,-apple-system,"Hiragino Sans","Yu Gothic",sans-serif;color:#333;background:#f4f1ec;overscroll-behavior:none}
@@ -34,11 +34,13 @@ button.on{background:#333;color:#fff;border-color:#333}
 #stage canvas{display:block}
 #temp{position:absolute;left:0;top:0;pointer-events:none}
 
-/* 太さ・濃さ */
+/* 太さ（見本つき）・濃さ */
 #sizes,#alphas{display:grid;grid-template-columns:1fr;gap:3px}
 @media (min-width:1000px){#sizes,#alphas{grid-template-columns:1fr 1fr}}
-#sizes button,#alphas button{padding:5px 0;font-size:13px;line-height:20px;border-radius:6px}
-#alphas button{border:1px solid #888}
+.szbtn{display:flex;align-items:center;gap:2px;height:30px;padding:0 3px;font-size:12px;border-radius:6px}
+.szbtn .smp{width:22px;flex:none;display:flex;justify-content:center;align-items:center}
+.szbtn i{display:block;border-radius:50%;background:currentColor}
+#alphas button{padding:4px 0;font-size:13px;line-height:20px;border:1px solid #888;border-radius:6px}
 #alphas button.sel{outline:3px solid #2a7fff;outline-offset:1px}
 
 /* パレット */
@@ -46,8 +48,7 @@ button.on{background:#333;color:#fff;border-color:#333}
 @media (min-width:1000px){#palette{grid-template-columns:1fr 1fr}}
 #palette button{height:32px;padding:0;border:1px solid #888;border-radius:4px}
 #palette button.sel{outline:3px solid #333;outline-offset:1px}
-#preview{width:100%;height:22px;border:1px solid #888;border-radius:6px;margin-bottom:4px}
-#code{width:100%;padding:4px;font-size:12px;border:1px solid #bbb;border-radius:6px}
+#picker{width:100%;height:36px;padding:0;border:1px solid #888;border-radius:6px;background:#fff;cursor:pointer}
 #register{width:100%;margin-top:4px;padding:6px 0;font-size:13px}
 
 #foot{display:flex;font-size:11px;color:#777;padding:3px 8px;background:#fff;border-top:1px solid #ddd}
@@ -55,7 +56,8 @@ button.on{background:#333;color:#fff;border-color:#333}
 /* バックアップ一覧 */
 #bk{position:fixed;top:0;left:0;right:0;bottom:0;z-index:100;background:#fff;overflow-y:auto;padding:10px 14px 30px}
 #bkclose{width:48px;height:48px;font-size:22px;padding:0;border:0;background:none}
-#bknote{text-align:center;margin:8px 0 18px;font-size:15px}
+#bknote{text-align:center;margin:8px 0 6px;font-size:15px}
+#bkinfo{text-align:center;margin:0 0 14px;font-size:12px;color:#c0392b}
 #bkgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(105px,1fr));gap:12px;max-width:760px;margin:0 auto}
 .bkitem{display:flex;flex-direction:column;align-items:center;gap:4px;padding:0;border:0;background:none}
 .bkitem img{width:100%;aspect-ratio:3/4;object-fit:cover;border:1px solid #ccc;border-radius:6px;background:#fff}
@@ -104,9 +106,8 @@ button.on{background:#333;color:#fff;border-color:#333}
     <div id="right" class="side">
       <h3>パレット</h3>
       <div id="palette"></div>
-      <h3>カラーコード</h3>
-      <div id="preview"></div>
-      <input id="code" value="#000000" maxlength="7" autocapitalize="off" autocomplete="off" spellcheck="false">
+      <h3>色を変える</h3>
+      <input type="color" id="picker" value="#000000">
       <button id="register">登録</button>
       <small>選んだ枠に上書き</small>
     </div>
@@ -120,6 +121,7 @@ button.on{background:#333;color:#fff;border-color:#333}
 <div id="bk" hidden>
   <button id="bkclose" aria-label="閉じる">✕</button>
   <p id="bknote">自動バックアップは10ストローク毎に自動的に作成されます。</p>
+  <p id="bkinfo"></p>
   <div id="bkgrid"></div>
 </div>
 
@@ -127,7 +129,7 @@ button.on{background:#333;color:#fff;border-color:#333}
 // ===== 設定 =====
 const W = 840, H = 1120;                 // キャンバスの大きさ（縦長 3:4）
 const ZMIN = 0.5, ZMAX = 5.0, ZDEFAULT = 1.5;
-const SIZES = [1, 2, 3, 5, 8, 12, 20, 30];
+const SIZES = [3, 3.5, 4, 4.5, 5, 5.5, 6, 8, 10, 14, 20, 30];
 const ALPHAS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
 const UNDO_MAX = 12;
 const BACKUP_EVERY = 10;                 // 何回描くごとにバックアップするか
@@ -149,6 +151,7 @@ main.width = temp.width = W; main.height = temp.height = H;
 const mctx = main.getContext('2d', { willReadFrequently: true });
 const tctx = temp.getContext('2d');
 mctx.fillStyle = '#fff'; mctx.fillRect(0, 0, W, H);
+const setStatus = t => { $('status').textContent = t; };
 
 // ===== 状態 =====
 let tool = 'pen', color = '#000000', alpha = 1, size = 5;
@@ -196,10 +199,19 @@ function setTool(t) {
 }
 document.querySelectorAll('#tools button[data-tool]').forEach(b => b.onclick = () => setTool(b.dataset.tool));
 
-// 太さ（ボタン）
+// 太さ（ボタン：丸の見本＋数字）
 SIZES.forEach(s => {
   const b = document.createElement('button');
-  b.textContent = s;
+  b.className = 'szbtn';
+  const smp = document.createElement('span');
+  smp.className = 'smp';
+  const dot = document.createElement('i');
+  const d = Math.max(2, Math.min(20, s * ZDEFAULT / dpr));   // 最初の倍率での見た目に近いサイズ
+  dot.style.width = dot.style.height = d.toFixed(1) + 'px';
+  smp.appendChild(dot);
+  const num = document.createElement('span');
+  num.textContent = s;
+  b.appendChild(smp); b.appendChild(num);
   b.classList.toggle('on', s === size);
   b.onclick = () => {
     size = s;
@@ -222,21 +234,15 @@ ALPHAS.forEach(v => {
   $('alphas').appendChild(b);
 });
 
-// ===== パレット（16色） =====
+// ===== パレット（16色・カラーピッカーで登録） =====
 function loadJSON(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }
 function saveJSON(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
 let palette = loadJSON('oekaki-palette16');
 if (!Array.isArray(palette) || palette.length !== 16) palette = DEFAULT_PALETTE.slice();
 
-function normHex(s) {
-  s = s.trim().replace(/^#/, '');
-  if (/^[0-9a-f]{3}$/i.test(s)) s = s.split('').map(c => c + c).join('');
-  return /^[0-9a-f]{6}$/i.test(s) ? '#' + s.toLowerCase() : null;
-}
 function setColor(hex) {
   color = hex;
-  $('code').value = hex;
-  $('preview').style.background = hex;
+  $('picker').value = hex;
 }
 function renderPalette() {
   const box = $('palette');
@@ -250,18 +256,18 @@ function renderPalette() {
     box.appendChild(b);
   });
 }
-$('code').addEventListener('input', () => {
-  const h = normHex($('code').value);
-  if (h) { color = h; $('preview').style.background = h; }
-});
-$('register').onclick = () => {
-  const h = normHex($('code').value);
-  if (!h) { alert('カラーコードは #ff8800 のように入力してください'); return; }
-  palette[sel] = h;
+function registerColor(hex) {            // 選んでいる枠に色を保存
+  palette[sel] = hex;
   saveJSON('oekaki-palette16', palette);
-  setColor(h);
+  setColor(hex);
   renderPalette();
-};
+}
+$('picker').addEventListener('input', () => {          // ピッカーで選んでいる間（描く色だけ変える）
+  color = $('picker').value;
+  if (tool === 'eraser' || tool === 'hand') setTool('pen');
+});
+$('picker').addEventListener('change', () => registerColor($('picker').value));  // 決定したら枠に登録
+$('register').onclick = () => registerColor(color);   // スポイトで拾った色などを枠に登録
 renderPalette();
 setColor(palette[0]);
 
@@ -459,69 +465,112 @@ window.addEventListener('keydown', e => {
   else if (k === 'y' || (k === 'z' && e.shiftKey)) { e.preventDefault(); redo(); }
 });
 
-// ===== バックアップ（IndexedDB） =====
+// ===== バックアップの保存先（新しいIndexedDB） =====
+const withTimeout = (p, ms) => Promise.race([p, new Promise((_, rej) => setTimeout(() => rej(new Error('時間切れ')), ms))]);
 let dbp = null;
 function getDB() {
   if (dbp) return dbp;
   dbp = new Promise((res, rej) => {
-    const r = indexedDB.open('oekaki-db', 2);
-    r.onupgradeneeded = () => {
-      const db = r.result;
-      if (!db.objectStoreNames.contains('kv')) db.createObjectStore('kv');
-      if (!db.objectStoreNames.contains('backups')) db.createObjectStore('backups', { keyPath: 'id' });
-    };
+    if (!window.indexedDB) { rej(new Error('この環境では保存できません')); return; }
+    const r = indexedDB.open('oekaki-backups', 1);
+    r.onupgradeneeded = () => { r.result.createObjectStore('backups', { keyPath: 'id' }); };
     r.onsuccess = () => {
       const db = r.result;
       db.onversionchange = () => { db.close(); dbp = null; };
       res(db);
     };
-    r.onerror = () => { dbp = null; rej(r.error); };
+    r.onerror = () => { dbp = null; rej(r.error || new Error('保存先を開けません')); };
+    r.onblocked = () => { dbp = null; rej(new Error('他の画面が使用中です')); };
   });
   return dbp;
 }
-async function dbReq(store, mode, fn) {
-  const db = await getDB();
-  return new Promise((res, rej) => {
-    const tx = db.transaction(store, mode);
-    const rq = fn(tx.objectStore(store));
-    tx.oncomplete = () => res(rq ? rq.result : undefined);
-    tx.onerror = () => rej(tx.error);
-    tx.onabort = () => rej(tx.error);
+function dbReq(mode, fn) {
+  return withTimeout((async () => {
+    const db = await getDB();
+    return new Promise((res, rej) => {
+      const tx = db.transaction('backups', mode);
+      const rq = fn(tx.objectStore('backups'));
+      tx.oncomplete = () => res(rq ? rq.result : undefined);
+      tx.onerror = () => rej(tx.error || new Error('保存エラー'));
+      tx.onabort = () => rej(tx.error || new Error('保存が中断されました'));
+    });
+  })(), 10000);
+}
+const dbAll = () => dbReq('readonly', os => os.getAll());
+const dbKeys = () => dbReq('readonly', os => os.getAllKeys());
+const dbGet = k => dbReq('readonly', os => os.get(k));
+const dbPut = v => dbReq('readwrite', os => os.put(v));
+const dbDelete = k => dbReq('readwrite', os => os.delete(k));
+
+// 前の版のバックアップを探す（バージョン指定なしで開くので、他の画面に邪魔されない）
+function readLegacy() {
+  return new Promise(res => {
+    const done = v => res(v);
+    try {
+      const r = indexedDB.open('oekaki-db');
+      r.onerror = () => done(null);
+      r.onblocked = () => done(null);
+      r.onsuccess = () => {
+        const db = r.result;
+        const names = [...db.objectStoreNames].filter(n => n === 'kv' || n === 'backups');
+        if (!names.length) { db.close(); done(null); return; }
+        let kvRec = null, bkRecs = [];
+        try {
+          const tx = db.transaction(names);
+          if (names.includes('kv')) tx.objectStore('kv').get('backup2').onsuccess = e => { kvRec = e.target.result; };
+          if (names.includes('backups')) tx.objectStore('backups').getAll().onsuccess = e => { bkRecs = e.target.result || []; };
+          tx.oncomplete = () => {
+            db.close();
+            const c = [];
+            if (kvRec && kvRec.blob) c.push({ blob: kvRec.blob, time: kvRec.time || 0 });
+            bkRecs.forEach(x => { if (x.full) c.push({ blob: x.full, time: x.time || 0 }); });
+            c.sort((a, b) => b.time - a.time);
+            done(c[0] || null);
+          };
+          tx.onerror = tx.onabort = () => { db.close(); done(null); };
+        } catch (e) { db.close(); done(null); }
+      };
+      setTimeout(() => done(null), 3000);
+    } catch (e) { done(null); }
   });
 }
-const dbGet = (s, k) => dbReq(s, 'readonly', os => os.get(k));
-const dbAll = s => dbReq(s, 'readonly', os => os.getAll());
-const dbKeys = s => dbReq(s, 'readonly', os => os.getAllKeys());
-const dbPut = (s, v) => dbReq(s, 'readwrite', os => os.put(v));
-const dbDelete = (s, k) => dbReq(s, 'readwrite', os => os.delete(k));
 
+// ===== バックアップ作成 =====
 const toBlobP = (c, type, q) => new Promise(res => c.toBlob(res, type, q));
 function fmt(t) {
   const d = new Date(t), z = n => String(n).padStart(2, '0');
   return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${z(d.getMinutes())}:${z(d.getSeconds())}`;
 }
-
+const mem = [];                          // 保存先が使えないときの予備（ページを閉じるまで）
 let backingUp = false;
 async function makeBackup() {
   if (changes === 0 || backingUp) return;
   backingUp = true;
   changes = 0;
+  const now = Date.now();
   try {
-    const now = Date.now();
     const full = await toBlobP(main, 'image/png');
+    if (!full) throw new Error('画像を作れませんでした');
     const tc = document.createElement('canvas');
     tc.width = THUMB_W; tc.height = THUMB_H;
     const tx = tc.getContext('2d');
     tx.fillStyle = '#fff'; tx.fillRect(0, 0, THUMB_W, THUMB_H);
     tx.drawImage(main, 0, 0, W, H, 0, 0, THUMB_W, THUMB_H);
     const thumb = await toBlobP(tc, 'image/jpeg', 0.8);
-    await dbPut('backups', { id: now, time: now, full, thumb });
-    const keys = (await dbKeys('backups')).sort((a, b) => b - a);
-    for (const k of keys.slice(MAX_BACKUPS)) await dbDelete('backups', k);
-    $('status').textContent = '最新バックアップ: ' + fmt(now);
+    const rec = { id: now, time: now, full, thumb };
+    try {
+      await dbPut(rec);
+      const keys = (await dbKeys()).sort((a, b) => b - a);
+      for (const k of keys.slice(MAX_BACKUPS)) await dbDelete(k);
+      setStatus('最新バックアップ: ' + fmt(now) + '（' + Math.min(keys.length, MAX_BACKUPS) + '件）');
+    } catch (e) {
+      mem.unshift(rec);
+      mem.splice(MAX_BACKUPS);
+      setStatus('保存先エラー（' + ((e && e.message) || e) + '）：ページを閉じるまでのバックアップになります');
+    }
   } catch (e) {
     changes = Math.max(changes, 1);
-    $('status').textContent = 'バックアップ失敗';
+    setStatus('バックアップ失敗: ' + ((e && e.message) || e));
   } finally {
     backingUp = false;
   }
@@ -529,25 +578,31 @@ async function makeBackup() {
 document.addEventListener('visibilitychange', () => { if (document.hidden) makeBackup(); });
 window.addEventListener('pagehide', () => makeBackup());
 
-// 一覧
+// ===== バックアップ一覧 =====
 let bkUrls = [];
+function revokeUrls() { bkUrls.forEach(u => URL.revokeObjectURL(u)); bkUrls = []; }
 function closeBackups() {
   $('bk').hidden = true;
-  bkUrls.forEach(u => URL.revokeObjectURL(u));
-  bkUrls = [];
+  revokeUrls();
   $('bkgrid').innerHTML = '';
 }
 async function openBackups() {
-  await makeBackup();                    // 今の絵も一覧に入れる
-  let list = [];
-  try { list = (await dbAll('backups')).sort((a, b) => b.id - a.id); } catch (e) {}
+  $('bk').hidden = false;
+  $('bk').scrollTop = 0;
   const grid = $('bkgrid');
+  grid.textContent = '読み込み中…';
+  $('bkinfo').textContent = '';
+  await makeBackup();                    // 今の絵も一覧に入れる
+  let list = [], err = null;
+  try { list = await dbAll(); } catch (e) { err = e; }
+  const seen = new Set(list.map(r => r.id));
+  mem.forEach(r => { if (!seen.has(r.id)) list.push(r); });
+  list.sort((a, b) => b.id - a.id);
+  list = list.slice(0, MAX_BACKUPS);
+  if (err) $('bkinfo').textContent = '※この端末では保存先を使えないため、ページを閉じるまでの分だけ表示しています（' + ((err && err.message) || err) + '）';
+  revokeUrls();
   grid.innerHTML = '';
-  bkUrls.forEach(u => URL.revokeObjectURL(u));
-  bkUrls = [];
-  if (!list.length) {
-    grid.textContent = 'まだバックアップはありません';
-  }
+  if (!list.length) { grid.textContent = 'まだバックアップはありません。絵を描くと自動で作られます。'; return; }
   list.forEach(r => {
     const u = URL.createObjectURL(r.thumb);
     bkUrls.push(u);
@@ -561,8 +616,6 @@ async function openBackups() {
     b.onclick = () => restoreBackup(r);
     grid.appendChild(b);
   });
-  $('bk').hidden = false;
-  $('bk').scrollTop = 0;
 }
 async function restoreBackup(r) {
   if (!confirm(fmt(r.time) + ' のバックアップに戻しますか？\n（今の絵も一覧に残ります。「戻す」でも元に戻せます）')) return;
@@ -574,7 +627,7 @@ async function restoreBackup(r) {
     closeBackups();
     changes = 1;                         // 戻した状態を「最新」として保存
     makeBackup();
-    $('status').textContent = fmt(r.time) + ' のバックアップに戻しました';
+    setStatus(fmt(r.time) + ' のバックアップに戻しました');
   } catch (e) {
     alert('戻せませんでした');
   }
@@ -582,25 +635,27 @@ async function restoreBackup(r) {
 $('bkbtn').onclick = openBackups;
 $('bkclose').onclick = closeBackups;
 
-// 起動時：いちばん新しいバックアップを復元
+// ===== 起動時：いちばん新しいバックアップを復元 =====
 (async () => {
   try {
     let blob = null, time = 0, legacy = false;
-    const keys = await dbKeys('backups');
+    const keys = await dbKeys();
     if (keys.length) {
-      const rec = await dbGet('backups', Math.max(...keys));
+      const rec = await dbGet(Math.max(...keys));
       if (rec && rec.full) { blob = rec.full; time = rec.time; }
     } else {
-      const old = await dbGet('kv', 'backup2');       // 前の版のバックアップを引き継ぐ
-      if (old && old.blob) { blob = old.blob; time = old.time; legacy = true; }
+      const old = await readLegacy();    // 前の版のバックアップを引き継ぐ
+      if (old) { blob = old.blob; time = old.time; legacy = true; }
     }
     if (blob && changes === 0) {
       const bmp = await createImageBitmap(blob);
       mctx.drawImage(bmp, 0, 0);
-      $('status').textContent = '前回のバックアップを復元しました (' + fmt(time) + ')';
+      setStatus('前回のバックアップを復元しました' + (time ? ' (' + fmt(time) + ')' : ''));
       if (legacy) { changes = 1; makeBackup(); }
     }
-  } catch (e) {}
+  } catch (e) {
+    setStatus('バックアップの保存先を開けませんでした（' + ((e && e.message) || e) + '）');
+  }
 })();
 
 // ===== 起動 =====
