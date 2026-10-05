@@ -8,103 +8,114 @@
 <style>
 *{box-sizing:border-box}
 html,body{margin:0;height:100%;font-family:system-ui,-apple-system,"Hiragino Sans","Yu Gothic",sans-serif;color:#333;background:#f4f1ec;overscroll-behavior:none}
-#app{display:flex;flex-direction:column;height:100dvh}
-#bar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:6px 8px;background:#fff;border-bottom:1px solid #ddd}
-.grp{display:flex;gap:4px;align-items:center}
-.sep{width:1px;height:24px;background:#ddd;margin:0 2px}
+#app{display:flex;flex-direction:column;height:100vh;height:100dvh}
+#bar{display:flex;flex-wrap:wrap;gap:6px 10px;align-items:center;justify-content:space-between;padding:6px 8px;background:#fff;border-bottom:1px solid #ddd}
+.grp{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 button,select,input{font:inherit}
-button{padding:6px 10px;border:1px solid #bbb;background:#fafafa;border-radius:6px;cursor:pointer}
+button{padding:8px 12px;border:1px solid #bbb;background:#fafafa;border-radius:8px;cursor:pointer}
 button:active{background:#eee}
 button.on{background:#333;color:#fff;border-color:#333}
-#area{flex:1;display:flex;min-height:0}
-#viewport{flex:1;position:relative;overflow:hidden;background:#cfd3d8;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;cursor:crosshair}
+#swatch{display:inline-block;width:18px;height:18px;border:1px solid #666;border-radius:50%;vertical-align:-4px;margin-right:4px}
+#canvasArea{flex:1;position:relative;min-height:0}
+#viewport{position:absolute;top:0;left:0;right:0;bottom:0;overflow:hidden;background:#cfd3d8;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none;cursor:crosshair}
 #stage{position:absolute;left:0;top:0;transform-origin:0 0;box-shadow:0 2px 12px rgba(0,0,0,.35)}
 #stage canvas{display:block}
 #temp{position:absolute;left:0;top:0;pointer-events:none}
-#panel{width:250px;padding:10px;background:#fff;border-left:1px solid #ddd;overflow-y:auto;display:flex;flex-direction:column;gap:12px}
-#panel h3{margin:0 0 4px;font-size:13px;color:#666}
-#sizes{display:flex;flex-wrap:wrap;gap:4px}
-#sizes button{min-width:38px;padding:6px 4px}
-#palette{display:grid;grid-template-columns:repeat(8,1fr);gap:4px}
+.float{position:absolute;background:rgba(255,255,255,.93);border:1px solid #ccc;border-radius:12px;box-shadow:0 2px 8px rgba(0,0,0,.2);padding:6px}
+#left{left:6px;top:6px;width:64px;max-height:calc(100% - 12px);overflow-y:auto;display:flex;flex-direction:column;gap:6px}
+#left h3{margin:2px 0 0;font-size:11px;color:#666;text-align:center}
+#left small{font-size:10px;color:#888;text-align:center}
+#sizes{display:flex;flex-direction:column;gap:4px}
+#sizes button{padding:7px 0;width:100%}
+#alpha{width:100%;padding:7px 0}
+#zoombox{right:6px;top:6px;width:64px;display:flex;flex-direction:column;gap:6px;text-align:center}
+#zoombox button{padding:7px 0;font-size:13px}
+#palpanel{right:6px;top:182px;width:280px;max-height:calc(100% - 190px);overflow-y:auto;display:none}
+#palpanel.open{display:block}
+#palpanel h3{margin:0 0 4px;font-size:12px;color:#666}
+#palette{display:grid;grid-template-columns:repeat(8,1fr);gap:4px;margin-bottom:10px}
 #palette button{aspect-ratio:1;padding:0;border:1px solid #888;border-radius:4px}
 #palette button.sel{outline:3px solid #333;outline-offset:1px}
 .row{display:flex;gap:6px;align-items:center}
 #code{flex:1;min-width:0;padding:6px;border:1px solid #bbb;border-radius:6px}
 #preview{width:32px;height:32px;border:1px solid #888;border-radius:6px;flex:none}
-#status{font-size:12px;color:#777}
-@media (max-width:720px){
-  #area{flex-direction:column}
-  #panel{width:100%;border-left:0;border-top:1px solid #ddd;max-height:42%}
-}
+#foot{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:#777;padding:3px 8px;background:#fff;border-top:1px solid #ddd}
 </style>
 </head>
 <body>
 <div id="app">
   <div id="bar">
+    <div class="grp">
+      <button id="undo">↩ 戻す</button>
+      <button id="redo">↪ 進む</button>
+      <button id="clear">🗑 全削除</button>
+      <button id="save">💾 保存</button>
+      <button id="finger" class="on">👆 指で描く：オン</button>
+    </div>
     <div class="grp" id="tools">
       <button data-tool="pen" class="on">✏️ ペン</button>
       <button data-tool="eraser">🧽 消しゴム</button>
       <button data-tool="eyedrop">💧 スポイト</button>
       <button data-tool="hand">✋ 手</button>
+      <button id="colorbtn"><span id="swatch"></span>色</button>
     </div>
-    <div class="sep"></div>
-    <div class="grp">
-      <button id="undo">↩ 戻す</button>
-      <button id="clear">🗑 全削除</button>
-      <button id="save">💾 保存</button>
-    </div>
-    <div class="sep"></div>
-    <div class="grp">
-      <button id="zout">－</button>
-      <span id="zlabel" style="min-width:3em;text-align:center">×1.0</span>
-      <button id="zin">＋</button>
-      <button id="center">中央へ</button>
-    </div>
-    <span id="status">自動バックアップ: 待機中</span>
   </div>
-  <div id="area">
+
+  <div id="canvasArea">
     <div id="viewport">
       <div id="stage">
         <canvas id="main"></canvas>
         <canvas id="temp"></canvas>
       </div>
     </div>
-    <div id="panel">
-      <div>
-        <h3>水彩ペンの濃さ</h3>
-        <select id="alpha"></select>
-      </div>
-      <div>
-        <h3>線の太さ(px)</h3>
-        <div id="sizes"></div>
-      </div>
-      <div>
-        <h3>パレット(32色)</h3>
-        <div id="palette"></div>
-      </div>
-      <div>
-        <h3>カラーコード</h3>
-        <div class="row">
-          <div id="preview"></div>
-          <input id="code" value="#000000" maxlength="7" autocapitalize="off" autocomplete="off" spellcheck="false">
-        </div>
-        <button id="register" style="margin-top:6px;width:100%">選択中の枠に登録</button>
-      </div>
+
+    <div id="left" class="float">
+      <h3>太さ</h3>
+      <div id="sizes"></div>
+      <h3>濃さ</h3>
+      <select id="alpha"></select>
+      <small>薄い←→濃い</small>
     </div>
+
+    <div id="zoombox" class="float">
+      <div id="zlabel">×1.5</div>
+      <button id="zin">＋</button>
+      <button id="zout">－</button>
+      <button id="reset">表示を戻す</button>
+    </div>
+
+    <div id="palpanel" class="float">
+      <h3>パレット(32色)</h3>
+      <div id="palette"></div>
+      <h3>カラーコード</h3>
+      <div class="row">
+        <div id="preview"></div>
+        <input id="code" value="#000000" maxlength="7" autocapitalize="off" autocomplete="off" spellcheck="false">
+      </div>
+      <button id="register" style="margin-top:6px;width:100%">選択中の枠に登録</button>
+    </div>
+  </div>
+
+  <div id="foot">
+    <span id="status">自動バックアップ: 待機中</span>
+    <span id="ptype">入力: -</span>
   </div>
 </div>
 
 <script>
 // ===== 設定 =====
-const W = 800, H = 600;               // キャンバスの大きさ
-const ZMIN = 0.5, ZMAX = 5.0;
+const W = 840, H = 1120;                 // キャンバスの大きさ（縦長 3:4）
+const ZMIN = 0.5, ZMAX = 5.0, ZDEFAULT = 1.5;
 const SIZES = [1, 2, 3, 5, 8, 12, 20, 30];
+const UNDO_MAX = 12;
 const DEFAULT_PALETTE = [
   '#000000','#4d4d4d','#808080','#b3b3b3','#ffffff','#8b4513','#d2691e','#f4a460',
   '#ff0000','#ff4500','#ff8c00','#ffd700','#ffff00','#9acd32','#32cd32','#008000',
   '#00ced1','#1e90ff','#0000ff','#00008b','#4b0082','#8a2be2','#ff00ff','#ff69b4',
   '#ffc0cb','#ffdab9','#fff5ba','#c7f2c4','#b5ead7','#bde0fe','#cdb4ff','#e6e6fa'
 ];
+// ×1.0 = キャンバス1ドットが画面の1ドット（devicePixelRatioで調整）
+const dpr = window.devicePixelRatio || 1;
 
 // ===== 要素 =====
 const $ = id => document.getElementById(id);
@@ -116,28 +127,33 @@ mctx.fillStyle = '#fff'; mctx.fillRect(0, 0, W, H);
 
 // ===== 状態 =====
 let tool = 'pen', color = '#000000', alpha = 1, size = 5;
-let zoom = 1, px = 0, py = 0;
-let sel = 0, dirty = false;
+let zoom = ZDEFAULT, px = 0, py = 0;
+let sel = 0, dirty = false, fingerDraw = true;
 
 // ===== 表示（拡大縮小・移動） =====
 function applyView() {
-  stage.style.transform = `translate(${px}px,${py}px) scale(${zoom})`;
+  stage.style.transform = `translate(${px}px,${py}px) scale(${zoom / dpr})`;
   $('zlabel').textContent = '×' + zoom.toFixed(1);
   main.style.imageRendering = zoom >= 2 ? 'pixelated' : 'auto';
 }
-function centerView() {
+function initView() {                    // 最初の表示：×1.5（入りきらなければ小さく）
   const r = viewport.getBoundingClientRect();
-  px = (r.width - W * zoom) / 2;
-  py = (r.height - H * zoom) / 2;
+  const fit = Math.min((r.width * dpr - 24) / W, (r.height * dpr - 24) / H);
+  zoom = Math.max(ZMIN, Math.min(ZDEFAULT, Math.floor(fit * 10) / 10));
+  px = (r.width - W * zoom / dpr) / 2;
+  py = (r.height - H * zoom / dpr) / 2;
   applyView();
 }
-function zoomAt(nz, cx, cy) {           // (cx,cy)=ビューポート内の基準点
+function zoomAt(nz, cx, cy) {            // (cx,cy)=ビューポート内の基準点
   nz = Math.min(ZMAX, Math.max(ZMIN, nz));
-  const ux = (cx - px) / zoom, uy = (cy - py) / zoom;
-  zoom = nz; px = cx - ux * zoom; py = cy - uy * zoom;
+  const s = zoom / dpr;
+  const ux = (cx - px) / s, uy = (cy - py) / s;
+  zoom = nz;
+  const s2 = zoom / dpr;
+  px = cx - ux * s2; py = cy - uy * s2;
   applyView();
 }
-function stepZoom(dir) {                // 0.5刻みでボタン拡大縮小
+function stepZoom(dir) {                 // 0.5刻みでボタン拡大縮小
   const r = viewport.getBoundingClientRect();
   const z2 = zoom * 2;
   const nz = dir > 0 ? (Math.floor(z2 + 1e-6) + 1) / 2 : (Math.ceil(z2 - 1e-6) - 1) / 2;
@@ -145,22 +161,27 @@ function stepZoom(dir) {                // 0.5刻みでボタン拡大縮小
 }
 $('zin').onclick = () => stepZoom(1);
 $('zout').onclick = () => stepZoom(-1);
-$('center').onclick = centerView;
+$('reset').onclick = initView;
 
 // ===== 道具 =====
 function setTool(t) {
   tool = t;
-  document.querySelectorAll('#tools button').forEach(b => b.classList.toggle('on', b.dataset.tool === t));
+  document.querySelectorAll('#tools button[data-tool]').forEach(b => b.classList.toggle('on', b.dataset.tool === t));
   viewport.style.cursor = t === 'hand' ? 'grab' : 'crosshair';
 }
-document.querySelectorAll('#tools button').forEach(b => b.onclick = () => setTool(b.dataset.tool));
+document.querySelectorAll('#tools button[data-tool]').forEach(b => b.onclick = () => setTool(b.dataset.tool));
+
+$('finger').onclick = () => {
+  fingerDraw = !fingerDraw;
+  $('finger').classList.toggle('on', fingerDraw);
+  $('finger').textContent = '👆 指で描く：' + (fingerDraw ? 'オン' : 'オフ');
+};
 
 // 濃さ（ドロップダウン）
 const alphaSel = $('alpha');
 for (let v = 10; v <= 100; v += 10) {
   const o = document.createElement('option');
-  o.value = v;
-  o.textContent = v + '%' + (v === 10 ? '（薄い）' : v === 100 ? '（濃い）' : '');
+  o.value = v; o.textContent = v + '%';
   alphaSel.appendChild(o);
 }
 alphaSel.value = 100;
@@ -193,6 +214,7 @@ function setColor(hex) {
   color = hex;
   $('code').value = hex;
   $('preview').style.background = hex;
+  $('swatch').style.background = hex;
 }
 function renderPalette() {
   const box = $('palette');
@@ -208,7 +230,7 @@ function renderPalette() {
 }
 $('code').addEventListener('input', () => {
   const h = normHex($('code').value);
-  if (h) { color = h; $('preview').style.background = h; }
+  if (h) { color = h; $('preview').style.background = h; $('swatch').style.background = h; }
 });
 $('register').onclick = () => {
   const h = normHex($('code').value);
@@ -218,19 +240,31 @@ $('register').onclick = () => {
   setColor(h);
   renderPalette();
 };
+$('colorbtn').onclick = () => $('palpanel').classList.toggle('open');
+if (window.innerWidth >= 1000) $('palpanel').classList.add('open');   // 横長なら最初から表示
 renderPalette();
 setColor(palette[0]);
 
 // ===== 描画 =====
 let drawing = false, drawId = null, last, lastMid, strokeAlpha = 1;
-const undoStack = [];
+const undoStack = [], redoStack = [];
+function snapshot() { return mctx.getImageData(0, 0, W, H); }
 function pushUndo() {
-  undoStack.push(mctx.getImageData(0, 0, W, H));
-  if (undoStack.length > 30) undoStack.shift();
+  undoStack.push(snapshot());
+  if (undoStack.length > UNDO_MAX) undoStack.shift();
+  redoStack.length = 0;
 }
 function undo() {
   const d = undoStack.pop();
   if (!d) return;
+  redoStack.push(snapshot());
+  mctx.putImageData(d, 0, 0);
+  dirty = true;
+}
+function redo() {
+  const d = redoStack.pop();
+  if (!d) return;
+  undoStack.push(snapshot());
   mctx.putImageData(d, 0, 0);
   dirty = true;
 }
@@ -258,6 +292,10 @@ function extendStroke(p) {
   tctx.stroke();
   last = p; lastMid = mid;
 }
+function strokeMove(e) {
+  const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
+  for (const ev of (evs.length ? evs : [e])) extendStroke(toCanvas(ev));
+}
 function endStroke() {
   if (!drawing) return;
   tctx.beginPath(); tctx.moveTo(lastMid.x, lastMid.y); tctx.lineTo(last.x, last.y); tctx.stroke();
@@ -269,6 +307,13 @@ function endStroke() {
   drawing = false; drawId = null;
   dirty = true;
 }
+function cancelStroke() {               // 描きかけをなかったことにする（2本指になったとき等）
+  if (!drawing) return;
+  tctx.clearRect(0, 0, W, H);
+  temp.style.opacity = 1;
+  drawing = false; drawId = null;
+  undoStack.pop();
+}
 function pick(p) {
   const x = Math.floor(p.x), y = Math.floor(p.y);
   if (x < 0 || y < 0 || x >= W || y >= H) return;
@@ -278,13 +323,14 @@ function pick(p) {
   setTool('pen');
 }
 
-// ===== 画面の移動（ペン/マウスの手ツール・指1本） =====
+// ===== 画面の移動 =====
 let panning = false, panId = null, panStart = null;
 function beginPan(id, x, y) { panning = true; panId = id; panStart = { x, y, px, py }; }
 function movePan(x, y) { px = panStart.px + (x - panStart.x); py = panStart.py + (y - panStart.y); applyView(); }
 function endPan() { panning = false; panId = null; }
 
-// ===== 指の操作（1本=移動、2本=ピンチで拡大縮小） =====
+// ===== 指の操作 =====
+// 指1本：描く（オン）／画面移動（オフ・手ツール）　指2本：ピンチで拡大縮小＋移動
 const touches = new Map();   // pointerId -> {x,y}
 let gesture = null;
 let penDown = false, lastPenTime = 0;
@@ -303,8 +349,16 @@ function onTouchDown(e) {
   if (penNearby()) return;              // ペンが近いときの指（手のひら）は無視
   viewport.setPointerCapture(e.pointerId);
   touches.set(e.pointerId, { x: e.clientX, y: e.clientY });
-  if (touches.size === 1) beginPan(e.pointerId, e.clientX, e.clientY);
-  else if (touches.size === 2) { endPan(); startGesture(); }
+  if (touches.size === 1) {
+    if (fingerDraw && tool !== 'hand') {
+      const p = toCanvas(e);
+      if (tool === 'eyedrop') pick(p); else startStroke(p, e.pointerId);
+    } else {
+      beginPan(e.pointerId, e.clientX, e.clientY);
+    }
+  } else if (touches.size === 2) {
+    cancelStroke(); endPan(); startGesture();
+  }
 }
 function onTouchMove(e) {
   const t = touches.get(e.pointerId);
@@ -316,10 +370,13 @@ function onTouchMove(e) {
     const dist = Math.hypot(a.x - b.x, a.y - b.y) || 1;
     const mx = (a.x + b.x) / 2 - r.left, my = (a.y + b.y) / 2 - r.top;
     const nz = Math.min(ZMAX, Math.max(ZMIN, gesture.zoom * dist / gesture.dist));
-    const ux = (gesture.mx - gesture.px) / gesture.zoom;
-    const uy = (gesture.my - gesture.py) / gesture.zoom;
-    zoom = nz; px = mx - ux * nz; py = my - uy * nz;
+    const gs = gesture.zoom / dpr;
+    const ux = (gesture.mx - gesture.px) / gs;
+    const uy = (gesture.my - gesture.py) / gs;
+    zoom = nz; px = mx - ux * (nz / dpr); py = my - uy * (nz / dpr);
     applyView();
+  } else if (drawing && e.pointerId === drawId) {
+    strokeMove(e);
   } else if (panning && e.pointerId === panId) {
     movePan(e.clientX, e.clientY);
   }
@@ -328,6 +385,7 @@ function onTouchEnd(e) {
   if (!touches.has(e.pointerId)) return;
   touches.delete(e.pointerId);
   gesture = null;
+  if (drawing && e.pointerId === drawId) endStroke();
   if (touches.size === 0) endPan();
   else if (touches.size === 1) { const [id, t] = [...touches.entries()][0]; beginPan(id, t.x, t.y); }
   else startGesture();
@@ -335,11 +393,12 @@ function onTouchEnd(e) {
 
 // ===== ポインタ入力 =====
 viewport.addEventListener('pointerdown', e => {
+  $('ptype').textContent = '入力: ' + e.pointerType;     // ペンが何として認識されたか表示
   if (e.pointerType === 'touch') { onTouchDown(e); return; }
   // ペン or マウス
   if (e.button > 0) return;
   if (e.pointerType === 'pen') { penDown = true; lastPenTime = performance.now(); }
-  touches.clear(); gesture = null; endPan();       // ペンが優先
+  cancelStroke(); touches.clear(); gesture = null; endPan();   // ペンが優先
   viewport.setPointerCapture(e.pointerId);
   if (tool === 'hand') {
     beginPan(e.pointerId, e.clientX, e.clientY);
@@ -355,8 +414,7 @@ viewport.addEventListener('pointermove', e => {
   if (e.pointerType === 'pen') lastPenTime = performance.now();   // ホバー中も記録
   if (panning && e.pointerId === panId) { movePan(e.clientX, e.clientY); return; }
   if (!drawing || e.pointerId !== drawId) return;
-  const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
-  for (const ev of (evs.length ? evs : [e])) extendStroke(toCanvas(ev));
+  strokeMove(e);
 });
 function pointerEnd(e) {
   if (e.pointerType === 'touch') { onTouchEnd(e); return; }
@@ -373,6 +431,7 @@ viewport.addEventListener('contextmenu', e => e.preventDefault());
 
 // ===== ボタン =====
 $('undo').onclick = undo;
+$('redo').onclick = redo;
 $('clear').onclick = () => {
   if (!confirm('全部消しますか？（「戻す」で元に戻せます）')) return;
   pushUndo();
@@ -390,10 +449,14 @@ $('save').onclick = () => {
   }, 'image/png');
 };
 window.addEventListener('keydown', e => {
-  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); undo(); }
+  if (!(e.ctrlKey || e.metaKey)) return;
+  const k = e.key.toLowerCase();
+  if (k === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
+  else if (k === 'y' || (k === 'z' && e.shiftKey)) { e.preventDefault(); redo(); }
 });
 
 // ===== 自動バックアップ（IndexedDB） =====
+const BACKUP_KEY = 'backup2';
 function idb() {
   return new Promise((res, rej) => {
     const r = indexedDB.open('oekaki-db', 1);
@@ -422,7 +485,7 @@ function backup() {
   dirty = false;
   main.toBlob(async b => {
     try {
-      await idbSet('backup', { blob: b, time: Date.now() });
+      await idbSet(BACKUP_KEY, { blob: b, time: Date.now() });
       $('status').textContent = '自動バックアップ済 ' + new Date().toLocaleTimeString('ja-JP');
     } catch (e) {
       dirty = true;
@@ -436,7 +499,7 @@ window.addEventListener('pagehide', backup);
 
 (async () => {
   try {
-    const rec = await idbGet('backup');
+    const rec = await idbGet(BACKUP_KEY);
     if (rec && rec.blob) {
       const bmp = await createImageBitmap(rec.blob);
       mctx.drawImage(bmp, 0, 0);
@@ -445,13 +508,8 @@ window.addEventListener('pagehide', backup);
   } catch (e) {}
 })();
 
-// ===== 起動時の表示位置 =====
-(function init() {
-  const r = viewport.getBoundingClientRect();
-  const fit = Math.min((r.width - 24) / W, (r.height - 24) / H);
-  zoom = Math.max(ZMIN, Math.min(1, Math.floor(fit * 2) / 2));
-  centerView();
-})();
+// ===== 起動 =====
+initView();
 </script>
 </body>
 </html>
